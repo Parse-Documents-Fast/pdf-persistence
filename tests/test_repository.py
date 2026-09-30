@@ -7,8 +7,10 @@ from bson import ObjectId
 from pdf_persistence.models import DocumentCreate
 from pdf_persistence.repository import (
     create_document,
+    delete_document,
     get_document_by_checksum,
     get_document_by_id,
+    list_documents,
 )
 from pdf_persistence.rfc9457 import (
     DocumentNotFoundException,
@@ -140,3 +142,78 @@ async def test_get_document_by_checksum_not_found(mock_db: AsyncMock) -> None:
     
     assert result is None
     mock_collection.find_one.assert_awaited_once_with({"checksum": "missing_checksum"})
+
+
+@pytest.mark.asyncio
+async def test_list_documents(mock_db: AsyncMock) -> None:
+    from unittest.mock import MagicMock
+    mock_collection = AsyncMock()
+    mock_db.__getitem__.return_value = mock_collection
+    
+    mock_cursor = MagicMock()
+    # Motor's find() is synchronous and returns a cursor
+    mock_collection.find = MagicMock(return_value=mock_cursor)
+    mock_cursor.skip.return_value = mock_cursor
+    mock_cursor.limit.return_value = mock_cursor
+    mock_cursor.to_list = AsyncMock()
+    
+    mock_doc = {
+        "_id": ObjectId(),
+        "content": "Valid Content",
+        "checksum": "checksum123",
+        "original_format": "markdown",
+        "title": "Document",
+        "created_at": "2024-01-01T00:00:00Z",
+    }
+    mock_cursor.to_list.return_value = [mock_doc, mock_doc]
+    
+    result = await list_documents(mock_db, skip=10, limit=2)
+    
+    assert len(result) == 2
+    assert result[0].checksum == "checksum123"
+    mock_collection.find.assert_called_once_with()
+    mock_cursor.skip.assert_called_once_with(10)
+    mock_cursor.limit.assert_called_once_with(2)
+    mock_cursor.to_list.assert_awaited_once_with(length=2)
+
+
+@pytest.mark.asyncio
+async def test_delete_document_success(mock_db: AsyncMock) -> None:
+    doc_id_str = str(ObjectId())
+    
+    mock_collection = AsyncMock()
+    mock_db.__getitem__.return_value = mock_collection
+    
+    mock_delete_result = AsyncMock()
+    mock_delete_result.deleted_count = 1
+    mock_collection.delete_one.return_value = mock_delete_result
+    
+    result = await delete_document(mock_db, doc_id_str)
+    
+    assert result is True
+    mock_collection.delete_one.assert_awaited_once_with({"_id": ObjectId(doc_id_str)})
+
+
+@pytest.mark.asyncio
+async def test_delete_document_not_found(mock_db: AsyncMock) -> None:
+    doc_id_str = str(ObjectId())
+    
+    mock_collection = AsyncMock()
+    mock_db.__getitem__.return_value = mock_collection
+    
+    mock_delete_result = AsyncMock()
+    mock_delete_result.deleted_count = 0
+    mock_collection.delete_one.return_value = mock_delete_result
+    
+    result = await delete_document(mock_db, doc_id_str)
+    
+    assert result is False
+    mock_collection.delete_one.assert_awaited_once_with({"_id": ObjectId(doc_id_str)})
+
+
+@pytest.mark.asyncio
+async def test_delete_document_invalid_id(mock_db: AsyncMock) -> None:
+    with pytest.raises(DocumentNotFoundException) as exc_info:
+        await delete_document(mock_db, "invalid_id")
+        
+    assert "invalid_id" in exc_info.value.detail  # type: ignore[operator]

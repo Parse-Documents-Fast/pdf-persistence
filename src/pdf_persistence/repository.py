@@ -53,3 +53,29 @@ async def get_document_by_checksum(db: AsyncIOMotorDatabase, checksum: str) -> D
         return None
         
     return DocumentResponse.model_validate(doc_dict)
+
+
+async def list_documents(
+    db: AsyncIOMotorDatabase, skip: int = 0, limit: int = 100
+) -> list[DocumentResponse]:
+    """
+    Retrieves a paginated list of documents.
+    """
+    collection = db["documents"]
+    cursor = collection.find().skip(skip).limit(limit)
+    documents = await cursor.to_list(length=limit)
+    return [DocumentResponse.model_validate(doc) for doc in documents]
+
+
+async def delete_document(db: AsyncIOMotorDatabase, document_id: str) -> bool:
+    """
+    Deletes a document by its ID.
+    Returns True if the document was deleted, False if it was not found.
+    Raises DocumentNotFoundException if the ID format is invalid.
+    """
+    if not ObjectId.is_valid(document_id):
+        raise DocumentNotFoundException(document_id=document_id)
+        
+    collection = db["documents"]
+    result = await collection.delete_one({"_id": ObjectId(document_id)})
+    return result.deleted_count > 0
