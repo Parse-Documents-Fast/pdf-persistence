@@ -6,7 +6,12 @@ from bson import ObjectId
 
 from pdf_persistence.models import DocumentResponse
 from pdf_persistence.rfc9457 import DuplicateDocumentException
-from pdf_persistence.services import get_document, process_and_save_pdf
+from pdf_persistence.services import (
+    delete_document,
+    get_document,
+    list_documents,
+    process_and_save_pdf,
+)
 
 
 @pytest.fixture
@@ -93,3 +98,33 @@ async def test_get_document(mock_get_by_id: AsyncMock, mock_db: AsyncMock) -> No
     # Assert
     assert result is mock_response
     mock_get_by_id.assert_awaited_once_with(mock_db, doc_id)
+
+
+@pytest.mark.asyncio
+@patch("pdf_persistence.services.repo_list_documents")
+async def test_list_documents(mock_repo_list: AsyncMock, mock_db: AsyncMock) -> None:
+    # Arrange
+    mock_responses = [MagicMock(spec=DocumentResponse), MagicMock(spec=DocumentResponse)]
+    mock_repo_list.return_value = mock_responses
+
+    # Act
+    result = await list_documents(mock_db, skip=5, limit=10)
+
+    # Assert
+    assert result == mock_responses
+    mock_repo_list.assert_awaited_once_with(mock_db, skip=5, limit=10)
+
+
+@pytest.mark.asyncio
+@patch("pdf_persistence.services.repo_delete_document")
+async def test_delete_document(mock_repo_delete: AsyncMock, mock_db: AsyncMock) -> None:
+    # Arrange
+    doc_id = str(ObjectId())
+    mock_repo_delete.return_value = True
+
+    # Act
+    result = await delete_document(mock_db, doc_id)
+
+    # Assert
+    assert result is True
+    mock_repo_delete.assert_awaited_once_with(mock_db, doc_id)
