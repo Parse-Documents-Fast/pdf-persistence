@@ -1,4 +1,3 @@
-from pdf_persistence.models import DocumentCreate, DocumentResponse
 from pdf_persistence.rfc9457 import (
     DocumentNotFoundException,
     DomainException,
@@ -8,9 +7,7 @@ from pdf_persistence.rfc9457 import (
 )
 
 __all__ = [
-    "DocumentCreate",
     "DocumentNotFoundException",
-    "DocumentResponse",
     "DomainException",
     "DuplicateDocumentException",
     "ProblemDetails",
