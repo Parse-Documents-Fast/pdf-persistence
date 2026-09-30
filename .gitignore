@@ -220,6 +220,10 @@ __marimo__/
 # IDEs
 .vscode/
 .idea/
+.agents
+
+# Package lock
+uv.lock
 
 # Windows OS
 Thumbs.db
@@ -232,3 +236,4 @@ ehthumbs_vista.db
 *.msp
 *.lnk
 Desktop.ini
+$RECYCLE.BIN/
