@@ -10,6 +10,12 @@ from pdf_persistence.repository import (
     get_document_by_checksum,
     get_document_by_id,
 )
+from pdf_persistence.repository import (
+    delete_document as repo_delete_document,
+)
+from pdf_persistence.repository import (
+    list_documents as repo_list_documents,
+)
 from pdf_persistence.rfc9457 import DuplicateDocumentException
 
 
@@ -47,3 +53,17 @@ async def get_document(db: AsyncIOMotorDatabase, document_id: str) -> DocumentRe
     Delegates to the repository to retrieve a document by ID.
     """
     return await get_document_by_id(db, document_id)
+
+
+async def list_documents(db: AsyncIOMotorDatabase, skip: int = 0, limit: int = 100) -> list[DocumentResponse]:
+    """
+    Delegates to the repository to list documents.
+    """
+    return await repo_list_documents(db, skip=skip, limit=limit)
+
+
+async def delete_document(db: AsyncIOMotorDatabase, document_id: str) -> bool:
+    """
+    Delegates to the repository to delete a document.
+    """
+    return await repo_delete_document(db, document_id)
