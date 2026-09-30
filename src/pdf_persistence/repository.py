@@ -39,3 +39,17 @@ async def get_document_by_id(db: AsyncIOMotorDatabase, document_id: str) -> Docu
         raise DocumentNotFoundException(document_id=document_id)
         
     return DocumentResponse.model_validate(doc_dict)
+
+
+async def get_document_by_checksum(db: AsyncIOMotorDatabase, checksum: str) -> DocumentResponse | None:
+    """
+    Retrieves a document by its checksum to check for duplicates.
+    Returns None if no document with the given checksum exists.
+    """
+    collection = db["documents"]
+    doc_dict = await collection.find_one({"checksum": checksum})
+    
+    if not doc_dict:
+        return None
+        
+    return DocumentResponse.model_validate(doc_dict)
