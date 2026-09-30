@@ -12,6 +12,7 @@ dependencies = [
     "motor>=3.7.1",
     "pydantic>=2.13.5",
     "pydantic-settings>=2.15.0",
+    "pymupdf4llm>=1.28.2",
     "structlog>=26.1.0",
     "uvicorn>=0.54.0",
 ]
