@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pymongo.errors
 import pytest
@@ -24,8 +24,22 @@ def mock_db() -> AsyncMock:
     return db
 
 
+@pytest.fixture
+def mock_redis() -> AsyncMock:
+    redis_client = AsyncMock()
+    # Para el método set de redis
+    redis_client.set = AsyncMock()
+    # Para get, return None for cache miss by default
+    redis_client.get = AsyncMock(return_value=None)
+    # Para delete
+    redis_client.delete = AsyncMock()
+    return redis_client
+
+
 @pytest.mark.asyncio
-async def test_create_document_success(mock_db: AsyncMock) -> None:
+@patch("pdf_persistence.repository.get_redis")
+async def test_create_document_success(mock_get_redis: AsyncMock, mock_db: AsyncMock, mock_redis: AsyncMock) -> None:
+    mock_get_redis.return_value = mock_redis
     doc = DocumentCreate(
         content="Hello world",
         checksum="123456",
@@ -46,7 +60,9 @@ async def test_create_document_success(mock_db: AsyncMock) -> None:
 
 
 @pytest.mark.asyncio
-async def test_create_document_duplicate(mock_db: AsyncMock) -> None:
+@patch("pdf_persistence.repository.get_redis")
+async def test_create_document_duplicate(mock_get_redis: AsyncMock, mock_db: AsyncMock, mock_redis: AsyncMock) -> None:
+    mock_get_redis.return_value = mock_redis
     doc = DocumentCreate(
         content="Hello world",
         checksum="dup_checksum",
@@ -110,7 +126,9 @@ async def test_get_document_by_id_invalid_id(mock_db: AsyncMock) -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_document_by_checksum_success(mock_db: AsyncMock) -> None:
+@patch("pdf_persistence.repository.get_redis")
+async def test_get_document_by_checksum_success(mock_get_redis: AsyncMock, mock_db: AsyncMock, mock_redis: AsyncMock) -> None:
+    mock_get_redis.return_value = mock_redis
     mock_collection = AsyncMock()
     mock_db.__getitem__.return_value = mock_collection
     
@@ -133,7 +151,9 @@ async def test_get_document_by_checksum_success(mock_db: AsyncMock) -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_document_by_checksum_not_found(mock_db: AsyncMock) -> None:
+@patch("pdf_persistence.repository.get_redis")
+async def test_get_document_by_checksum_not_found(mock_get_redis: AsyncMock, mock_db: AsyncMock, mock_redis: AsyncMock) -> None:
+    mock_get_redis.return_value = mock_redis
     mock_collection = AsyncMock()
     mock_db.__getitem__.return_value = mock_collection
     mock_collection.find_one.return_value = None
@@ -178,7 +198,9 @@ async def test_list_documents(mock_db: AsyncMock) -> None:
 
 
 @pytest.mark.asyncio
-async def test_delete_document_success(mock_db: AsyncMock) -> None:
+@patch("pdf_persistence.repository.get_redis")
+async def test_delete_document_success(mock_get_redis: AsyncMock, mock_db: AsyncMock, mock_redis: AsyncMock) -> None:
+    mock_get_redis.return_value = mock_redis
     doc_id_str = str(ObjectId())
     
     mock_collection = AsyncMock()
@@ -195,7 +217,9 @@ async def test_delete_document_success(mock_db: AsyncMock) -> None:
 
 
 @pytest.mark.asyncio
-async def test_delete_document_not_found(mock_db: AsyncMock) -> None:
+@patch("pdf_persistence.repository.get_redis")
+async def test_delete_document_not_found(mock_get_redis: AsyncMock, mock_db: AsyncMock, mock_redis: AsyncMock) -> None:
+    mock_get_redis.return_value = mock_redis
     doc_id_str = str(ObjectId())
     
     mock_collection = AsyncMock()

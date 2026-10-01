@@ -2,6 +2,9 @@ import pymongo.errors
 from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from dev.config import settings
+from pdf_persistence.cache import get_redis
+
 from pdf_persistence.models import DocumentCreate, DocumentResponse
 from pdf_persistence.rfc9457 import (
     DocumentNotFoundException,
@@ -19,7 +22,14 @@ async def create_document(db: AsyncIOMotorDatabase, doc: DocumentCreate) -> str:
     
     try:
         result = await collection.insert_one(doc_dict)
-        return str(result.inserted_id)
+        doc_id = str(result.inserted_id)
+        
+        # Guardar en redis
+        redis_client = get_redis()
+        cache_key = f"dedupe:checksum:{doc.checksum}"
+        await redis_client.set(cache_key, doc_id, ex=settings.REDIS_TTL)
+        
+        return doc_id
     except pymongo.errors.DuplicateKeyError as e:
         raise DuplicateDocumentException(checksum=doc.checksum) from e
 
@@ -46,13 +56,36 @@ async def get_document_by_checksum(db: AsyncIOMotorDatabase, checksum: str) -> D
     Retrieves a document by its checksum to check for duplicates.
     Returns None if no document with the given checksum exists.
     """
+    redis_client = get_redis()
+    cache_key = f"dedupe:checksum:{checksum}"
+    
+    # 1. Intentar obtener desde Redis
+    cached_id = await redis_client.get(cache_key)
+    if cached_id:
+        from datetime import datetime, UTC
+        # Retornamos un mock válido para satisfacer la firma y evitar consultar DB
+        return DocumentResponse(
+            id=cached_id,
+            content="cached",
+            checksum=checksum,
+            original_format="pdf",
+            created_at=datetime.now(UTC),
+            title=None
+        )
+
+    # 2. Si hay miss, buscar en MongoDB
     collection = db["documents"]
     doc_dict = await collection.find_one({"checksum": checksum})
     
     if not doc_dict:
         return None
         
-    return DocumentResponse.model_validate(doc_dict)
+    doc_resp = DocumentResponse.model_validate(doc_dict)
+    
+    # 3. Guardar en cache con TTL
+    await redis_client.set(cache_key, str(doc_resp.id), ex=settings.REDIS_TTL)
+    
+    return doc_resp
 
 
 async def list_documents(
@@ -77,5 +110,13 @@ async def delete_document(db: AsyncIOMotorDatabase, document_id: str) -> bool:
         raise DocumentNotFoundException(document_id=document_id)
         
     collection = db["documents"]
+    
+    # Obtener el documento para borrar su checksum en cache
+    doc = await collection.find_one({"_id": ObjectId(document_id)})
+    if doc and "checksum" in doc:
+        redis_client = get_redis()
+        cache_key = f"dedupe:checksum:{doc['checksum']}"
+        await redis_client.delete(cache_key)
+        
     result = await collection.delete_one({"_id": ObjectId(document_id)})
     return result.deleted_count > 0
