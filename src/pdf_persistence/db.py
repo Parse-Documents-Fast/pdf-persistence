@@ -33,14 +33,17 @@ async def setup_indexes() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """Manage MongoDB connection lifecycle."""
+    """Manage MongoDB and Redis connection lifecycle."""
+    from pdf_persistence.cache import lifespan as cache_lifespan
+    
     logger.info("Connecting to MongoDB at %s", settings.MONGO_URI)
     db_manager.client = AsyncIOMotorClient(settings.MONGO_URI)
     db_manager.db = db_manager.client[settings.MONGO_DB_NAME]
 
     await setup_indexes()
 
-    yield
+    async with cache_lifespan(app):
+        yield
 
     if db_manager.client is not None:
         db_manager.client.close()
