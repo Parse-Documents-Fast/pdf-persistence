@@ -36,3 +36,9 @@ dev = [
 
 [tool.ruff.lint]
 extend-ignore = ["B008"]
+
+[tool.pytest.ini_options]
+pythonpath = [
+  ".",
+  "src"
+]
