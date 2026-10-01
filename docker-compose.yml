@@ -1,0 +1,17 @@
+services:
+  pdf-persistence:
+    build:
+      context: .
+    container_name: pdf-persistence
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGO_URI=mongodb://mongo:27017
+      - DB_NAME=pdf_persistence
+    networks:
+      - fast_pdf_network
+    restart: unless-stopped
+
+networks:
+  fast_pdf_network:
+    external: true
