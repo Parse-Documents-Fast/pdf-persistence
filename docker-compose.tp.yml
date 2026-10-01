@@ -1,0 +1,26 @@
+services:
+  pdf-persistence:
+    build:
+      context: .
+    # No asignamos un port mapeado fijo host:container si tenemos replicas
+    # o de lo contrario colisionarían los puertos. Se delega al reverse proxy o balanceador.
+    expose:
+      - "8000"
+    environment:
+      - MONGO_URI=mongodb://mongo:27017
+      - DB_NAME=pdf_persistence
+      - ENV=production
+      - UVICORN_WORKERS=1
+    networks:
+      - fast_pdf_network
+    deploy:
+      replicas: 5
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: '512M'
+    restart: unless-stopped
+
+networks:
+  fast_pdf_network:
+    external: true
