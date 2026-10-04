@@ -14,7 +14,6 @@ from pdf_persistence.models import DocumentResponse
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
-
 @router.post("", response_model=dict, status_code=status.HTTP_201_CREATED)
 async def upload_document_endpoint(
     title: Annotated[str, Form(...)],
@@ -23,9 +22,8 @@ async def upload_document_endpoint(
 ) -> dict[str, str]:
     """Uploads a PDF, parses it, and saves it to the database."""
     file_bytes = await file.read()
-    document_id = await process_and_save_pdf(db, file_bytes, title)
+    document_id, _, _ = await process_and_save_pdf(db, file_bytes, title)
     return {"id": document_id}
-
 
 @router.get("/{document_id}", response_model=DocumentResponse)
 async def get_document_endpoint(

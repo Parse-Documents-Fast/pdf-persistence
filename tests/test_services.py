@@ -39,6 +39,7 @@ async def test_process_and_save_pdf_success(
     mock_get_by_checksum.return_value = None  # No duplicate found
     
     mock_doc_instance = MagicMock()
+    mock_doc_instance.page_count = 10
     mock_fitz.Document.return_value = mock_doc_instance
     mock_pymupdf.to_markdown.return_value = "## Markdown content"
     
@@ -46,10 +47,12 @@ async def test_process_and_save_pdf_success(
     mock_create_doc.return_value = expected_id
 
     # Act
-    doc_id = await process_and_save_pdf(mock_db, file_bytes, title)
+    doc_id, content, page_count = await process_and_save_pdf(mock_db, file_bytes, title)
 
     # Assert
     assert doc_id == expected_id
+    assert content == "## Markdown content"
+    assert page_count == 10
     mock_get_by_checksum.assert_awaited_once_with(mock_db, expected_checksum)
     mock_fitz.Document.assert_called_once_with(stream=file_bytes, filetype="pdf")
     mock_pymupdf.to_markdown.assert_called_once_with(mock_doc_instance)

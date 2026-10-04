@@ -2,7 +2,6 @@ services:
   pdf-persistence:
     build:
       context: .
-    container_name: pdf-persistence
     ports:
       - "8000:8000"
     environment:

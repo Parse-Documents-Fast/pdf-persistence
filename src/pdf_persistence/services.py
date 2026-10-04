@@ -19,10 +19,10 @@ from pdf_persistence.repository import (
 from pdf_persistence.rfc9457 import DuplicateDocumentException
 
 
-async def process_and_save_pdf(db: AsyncIOMotorDatabase, file_bytes: bytes, title: str) -> str:
+async def process_and_save_pdf(db: AsyncIOMotorDatabase, file_bytes: bytes, title: str) -> tuple[str, str, int]:
     """
     Parses a PDF into Markdown and saves it to the database if it's not a duplicate.
-    Returns the ID of the inserted document.
+    Returns the ID of the inserted document, the markdown text, and the page count.
     """
     # 1. Generate checksum
     checksum = hashlib.sha256(file_bytes).hexdigest()
@@ -45,7 +45,7 @@ async def process_and_save_pdf(db: AsyncIOMotorDatabase, file_bytes: bytes, titl
     )
     
     document_id = await create_document(db, payload)
-    return document_id
+    return document_id, md_text, doc_fitz.page_count
 
 
 async def get_document(db: AsyncIOMotorDatabase, document_id: str) -> DocumentResponse:

@@ -33,7 +33,7 @@ async def test_upload_document(
     mock_process: AsyncMock,
     test_app: FastAPI,
 ) -> None:
-    mock_process.return_value = "fake_doc_id"
+    mock_process.return_value = ("fake_doc_id", "content", 10)
     
     async with AsyncClient(
         transport=ASGITransport(app=test_app), base_url="http://test"
