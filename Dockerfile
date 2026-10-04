@@ -8,11 +8,11 @@ RUN pip install uv
 # Copiar dependencias y lockfile
 COPY pyproject.toml uv.lock ./
 
-# Instalar dependencias
-RUN uv sync --no-dev
-
 # Copiar el codigo fuente
 COPY . .
+
+# Instalar dependencias
+RUN uv sync --no-dev
 
 # Exponer el puerto
 EXPOSE 8000
