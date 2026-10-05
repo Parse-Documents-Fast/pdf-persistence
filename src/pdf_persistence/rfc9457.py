@@ -5,11 +5,18 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class ProblemDetails(BaseModel):
-    type: str = Field(default="about:blank", description="URI reference identifying problem type")
+    type: str = Field(
+        default="about:blank", description="URI reference identifying problem type"
+    )
     title: str = Field(..., description="Short, human-readable summary of problem type")
     status: int = Field(..., description="HTTP status code")
-    detail: str | None = Field(default=None, description="Human-readable explanation specific to this occurrence")
-    instance: str | None = Field(default=None, description="URI reference identifying specific occurrence")
+    detail: str | None = Field(
+        default=None,
+        description="Human-readable explanation specific to this occurrence",
+    )
+    instance: str | None = Field(
+        default=None, description="URI reference identifying specific occurrence"
+    )
 
     model_config = ConfigDict(extra="allow")
 
@@ -61,6 +68,7 @@ class DomainException(Exception):
         self.type_ = type_
         self.instance = instance
         self.extra = kwargs
+
     def to_problem_details(self) -> dict[str, Any]:
         return {
             "status": self.status_code,

@@ -1,16 +1,13 @@
-﻿import logging
-from fastapi import Depends
-from motor.motor_asyncio import AsyncIOMotorDatabase
-from pdf_persistence.db import get_db
-from contextlib import asynccontextmanager
+import logging
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import Depends, FastAPI
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from dev.config import settings
 from pdf_persistence.api import router as documents_router
-from pdf_persistence.db import lifespan
+from pdf_persistence.db import get_db, lifespan
 from pdf_persistence.rfc9457 import DomainException, problem_details_response
 
 logging.basicConfig(level=logging.INFO)
@@ -23,7 +20,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-cors_origins = getattr(settings, "CORS_ORIGINS", ["http://localhost", "http://localhost:8000"])
+cors_origins = getattr(
+    settings, "CORS_ORIGINS", ["http://localhost", "http://localhost:8000"]
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -33,6 +32,7 @@ app.add_middleware(
 )
 
 app.include_router(documents_router)
+
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request, exc: RequestValidationError):
@@ -44,12 +44,14 @@ async def validation_exception_handler(request, exc: RequestValidationError):
         title="Validation Error",
         detail="The request payload is invalid",
         type_="https://fastpdf.dev/errors/validation",
-        errors=details
+        errors=details,
     )
+
 
 @app.exception_handler(DomainException)
 async def domain_exception_handler(request, exc: DomainException):
     return problem_details_response(**exc.to_problem_details())
+
 
 @app.get("/health")
 async def health_check(db: AsyncIOMotorDatabase = Depends(get_db)):
