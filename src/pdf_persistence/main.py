@@ -1,4 +1,7 @@
 import logging
+from fastapi import UploadFile, File, Depends
+from motor.motor_asyncio import AsyncIOMotorDatabase
+from pdf_persistence.db import get_db
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -42,8 +45,8 @@ async def health_check():
 
 @app.post("/extract")
 async def extract_pdf(
-    file: __import__('fastapi').UploadFile = __import__('fastapi').File(...),
-    db: __import__('motor.motor_asyncio').AsyncIOMotorDatabase = __import__('fastapi').Depends(__import__('pdf_persistence.db').get_db)
+    file: UploadFile = File(...),
+    db: AsyncIOMotorDatabase = Depends(get_db)
 ):
     from pdf_persistence.services import process_and_save_pdf
     
@@ -55,3 +58,5 @@ async def extract_pdf(
         "content": content,
         "page_count": page_count
     }
+
+

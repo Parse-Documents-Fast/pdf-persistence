@@ -4,7 +4,7 @@ services:
       context: .
     environment:
       - MONGO_URI=mongodb://mongo:27017
-      - DB_NAME=pdf_persistence
+      - MONGO_DB_NAME=pdf_persistence
     networks:
       - fast_pdf_network
     restart: unless-stopped

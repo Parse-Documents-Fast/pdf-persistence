@@ -223,7 +223,7 @@ __marimo__/
 .agents
 
 # Package lock
-uv.lock
+
 
 # Windows OS
 Thumbs.db
