@@ -4,8 +4,8 @@ import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
-from core.api import documents_router
-from core.db import get_db
+from pdf_persistence.api import router as documents_router
+from pdf_persistence.db import get_db
 from pdf_persistence.models import DocumentResponse
 
 
