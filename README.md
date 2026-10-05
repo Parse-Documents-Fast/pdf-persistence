@@ -1,48 +1,49 @@
-# PDF Persistence Service
+﻿# PDF Persistence Service
 
-Microservicio encargado de recibir archivos PDF, procesarlos utilizando extracción estructurada con Inteligencia Artificial (`pymupdf4llm`), y almacenarlos en una base de datos MongoDB manteniendo un registro único por documento.
+Microservicio interno encargado de interactuar con la base de datos MongoDB para almacenar y gestionar los metadatos y el estado de los documentos del sistema.
 
 ## Arquitectura
 
-El proyecto está diseñado bajo un enfoque de Arquitectura Limpia modularizada:
-- `core/`: Expone las interfaces públicas, enrutadores y servicios principales (desacoplamiento total).
-- `src/pdf_persistence/`: Contiene la lógica detallada dividida por capas.
-  - `models.py`: DTOs de Pydantic.
-  - `rfc9457.py`: Manejo y serialización estándar de errores en APIs REST.
-  - `db.py`: Wrapper asíncrono para MongoDB (`Motor`) y gestión de índices.
-  - `repository.py`: Abstracción de datos (Create, List, Get, Delete).
-  - `services.py`: Orquestación, conversión de PDF a Markdown e inspección de duplicados (mediante SHA-256).
-  - `api.py`: Capa de transporte y enrutamiento (FastAPI).
+El proyecto está diseñado bajo un enfoque modular y asíncrono con FastAPI y Motor:
+- src/pdf_persistence/: Contiene la lógica del microservicio.
+  - models.py: DTOs de Pydantic alineados al contrato interno (JSON).
+  - fc9457.py: Manejo y serialización estándar de errores en APIs REST (Problem Details).
+  - db.py: Wrapper asíncrono para MongoDB (Motor), inicialización de base de datos e índices.
+  - epository.py: Abstracción de datos para interactuar con la DB y Redis (Create, List, Get, Delete, Update, FindByChecksum).
+  - services.py: Orquestación y lógica de negocio.
+  - pi.py: Capa de transporte y enrutamiento REST (FastAPI).
 
 ## Dependencias
 
 - **FastAPI / Uvicorn:** Base para el servicio HTTP asíncrono.
 - **Motor / PyMongo:** Cliente de MongoDB asíncrono.
 - **Pydantic / Pydantic-Settings:** Serialización de datos y manejo de variables de entorno.
-- **PyMuPDF4LLM:** Extracción de texto desde PDF a formato Markdown limpio para LLMs.
-- **Python-Multipart:** Manejo de uploads de archivos (`multipart/form-data`).
+- **Redis:** Para cacheo de checksums evitando consultas constantes a la base de datos de los duplicados.
 
 ## Configuración y Ejecución
 
-El proyecto utiliza `uv` como manejador de paquetes.
+El proyecto utiliza uv como manejador de paquetes de Python en espacio de usuario.
 
-```bash
+`ash
 # Sincronizar el entorno y dependencias
 uv sync
 
 # Ejecutar tests
-uv run python -m pytest
+uv run pytest
 
-# Chequear linter (Ruff)
+# Chequear y corregir linter/formateo (Ruff)
 uv run ruff check .
-```
+uv run ruff format .
+`
 
 ## Endpoints Principales
 
-- `POST /documents`: Subida de un PDF y su título. Extrae a Markdown y persiste.
-- `GET /documents`: Listado paginado de documentos extraídos.
-- `GET /documents/{id}`: Obtención del documento procesado (ID, contenido Markdown, metadata).
-- `DELETE /documents/{id}`: Eliminación de un registro.
+- POST /documents: Crea un nuevo registro en estado pending o done. Recibe JSON (PersistCreateRequest).
+- GET /documents/by-checksum: Consulta rápidamente por un documento usando su hash.
+- GET /documents: Listado paginado de documentos extraídos.
+- GET /documents/{id}: Obtención del documento procesado (ID, contenido Markdown, metadata, estado).
+- PATCH /documents/{id}: Actualiza el estado y contenido del documento de forma asíncrona.
+- DELETE /documents/{id}: Eliminación de un registro.
 
-## Casos de Uso Avanzados
-- **Prevención de Duplicados**: Todo documento entrante pasa por un chequeo rápido en memoria generándose su hash `SHA-256`. Si existe, se descarta y se devuelve error de conflicto evitando uso excesivo de procesamiento de PDFs.
+## Prevención de Duplicados
+Todo documento es contrastado utilizando su hash SHA-256. Si existe, se descarta la creación (HTTP 409) y se avisa de la colisión para mantener la base de datos eficiente y limpia.
