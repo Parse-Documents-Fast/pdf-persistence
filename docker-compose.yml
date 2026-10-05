@@ -2,8 +2,6 @@ services:
   pdf-persistence:
     build:
       context: .
-    ports:
-      - "8000:8000"
     environment:
       - MONGO_URI=mongodb://mongo:27017
       - DB_NAME=pdf_persistence
