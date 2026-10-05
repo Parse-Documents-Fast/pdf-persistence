@@ -1,4 +1,4 @@
-from pdf_persistence.models import DocumentCreate, DocumentResponse
+from pdf_persistence.models import PersistCreateRequest, PersistUpdateRequest, PersistRecord
 from pdf_persistence.rfc9457 import (
     DocumentNotFoundException,
     DomainException,

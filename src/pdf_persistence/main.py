@@ -1,5 +1,5 @@
 ﻿import logging
-from fastapi import UploadFile, File, Depends
+from fastapi import Depends
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pdf_persistence.db import get_db
 from contextlib import asynccontextmanager
@@ -23,7 +23,6 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Parse origins if it exists or default to open
 cors_origins = getattr(settings, "CORS_ORIGINS", ["http://localhost", "http://localhost:8000"])
 
 app.add_middleware(
@@ -54,22 +53,5 @@ async def domain_exception_handler(request, exc: DomainException):
 
 @app.get("/health")
 async def health_check(db: AsyncIOMotorDatabase = Depends(get_db)):
-    # Check mongo connection
     await db.command("ping")
     return {"status": "healthy"}
-
-@app.post("/extract")
-async def extract_pdf(
-    file: UploadFile = File(...),
-    db: AsyncIOMotorDatabase = Depends(get_db)
-):
-    from pdf_persistence.services import process_and_save_pdf
-    
-    file_bytes = await file.read()
-    title = file.filename or "unknown.pdf"
-    _, content, page_count = await process_and_save_pdf(db, file_bytes, title)
-    
-    return {
-        "content": content,
-        "page_count": page_count
-    }
