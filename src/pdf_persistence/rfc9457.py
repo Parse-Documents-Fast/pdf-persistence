@@ -61,6 +61,15 @@ class DomainException(Exception):
         self.type_ = type_
         self.instance = instance
         self.extra = kwargs
+    def to_problem_details(self) -> dict[str, Any]:
+        return {
+            "status": self.status_code,
+            "title": self.title,
+            "detail": self.detail,
+            "type_": self.type_,
+            "instance": self.instance,
+            **self.extra,
+        }
 
 
 class DocumentNotFoundException(DomainException):

@@ -3,8 +3,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, File, Form, Response, UploadFile, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from core.db import get_db
-from core.services import (
+from pdf_persistence.db import get_db
+from pdf_persistence.services import (
     delete_document,
     get_document,
     list_documents,

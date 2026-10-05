@@ -1,4 +1,4 @@
-import logging
+﻿import logging
 from fastapi import UploadFile, File, Depends
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pdf_persistence.db import get_db
@@ -6,10 +6,11 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
 
 from dev.config import settings
 from pdf_persistence.api import router as documents_router
-from core.db import lifespan
+from pdf_persistence.db import lifespan
 from pdf_persistence.rfc9457 import DomainException, problem_details_response
 
 logging.basicConfig(level=logging.INFO)
@@ -22,23 +23,37 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Parse origins if it exists or default to open
+cors_origins = getattr(settings, "CORS_ORIGINS", ["http://localhost", "http://localhost:8000"])
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 app.include_router(documents_router)
 
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request, exc: RequestValidationError):
+    details = []
+    for err in exc.errors():
+        details.append(f"{'.'.join(str(loc) for loc in err['loc'])}: {err['msg']}")
+    return problem_details_response(
+        status=400,
+        title="Validation Error",
+        detail="The request payload is invalid",
+        type_="https://fastpdf.dev/errors/validation",
+        errors=details
+    )
+
 @app.exception_handler(DomainException)
 async def domain_exception_handler(request, exc: DomainException):
-    return problem_details_response(exc.to_problem_details())
+    return problem_details_response(**exc.to_problem_details())
 
 @app.get("/health")
-async def health_check():
-    from pdf_persistence.db import get_db
-    db = get_db()
+async def health_check(db: AsyncIOMotorDatabase = Depends(get_db)):
     # Check mongo connection
     await db.command("ping")
     return {"status": "healthy"}
@@ -58,5 +73,3 @@ async def extract_pdf(
         "content": content,
         "page_count": page_count
     }
-
-
