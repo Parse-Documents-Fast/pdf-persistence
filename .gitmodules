@@ -1,0 +1,3 @@
+[submodule "docs/pdf-docs"]
+	path = docs/pdf-docs
+	url = git@github.com:Parse-Documents-Fast/pdf-docs.git
