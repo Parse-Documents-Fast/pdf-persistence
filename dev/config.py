@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     REDIS_HOST: str = "redis-cache"
     REDIS_PORT: int = 6379
     REDIS_TTL: int = 604800  # 7 days in seconds
+    LOG_LEVEL: str = "info"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
