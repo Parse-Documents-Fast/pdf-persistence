@@ -30,7 +30,15 @@ Siguiendo el **ADR-0006** (`pdf-infra gestiona la instancia de MongoDB; pdf-pers
 | `REDIS_HOST` | Host de la instancia Redis para caché de checksums | `redis-cache` |
 | `REDIS_PORT` | Puerto de la instancia Redis | `6379` |
 | `REDIS_TTL` | Tiempo de vida de claves de checksum en Redis (segundos) | `604800` (7 días) |
+| `LOG_LEVEL` | Nivel mínimo de logging (`debug`, `info`, `warn`, `error`) | `info` |
 | `PDF_PERSISTANCE_REPLICAS` | Número de réplicas a instanciar en `docker-compose.yml` | `1` |
+
+## Estándar de Logs (ADR-0007)
+
+Los eventos de aplicación se emiten a `stdout` en formato **JSON estructurado de una sola línea** por evento, sin requerir librerías de terceros (Factor XI de 12-factor):
+- **Campos obligatorios:** `time` (RFC 3339 UTC), `level` (`DEBUG`, `INFO`, `WARN`, `ERROR`), `service` (`pdf-persistence`) y `msg` (frase corta y estable en inglés).
+- **Campos de contexto:** `pdf_id`, `checksum`, `duration_ms`, `http_method`, `http_path`, `http_status`.
+- **Privacidad estricta:** En ningún caso se registra el contenido ni el texto de los documentos.
 
 ## Despliegue con Docker y Escalado Horizontal
 

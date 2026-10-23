@@ -5,6 +5,7 @@ services:
     environment:
       - MONGO_URL=${MONGO_URL:-mongodb://mongo:27017}
       - MONGO_DB_NAME=${MONGO_DB_NAME:-pdf_persistence}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
     deploy:
       replicas: ${PDF_PERSISTANCE_REPLICAS:-1}
     networks:
