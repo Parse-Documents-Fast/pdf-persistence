@@ -1,37 +1,51 @@
-FROM python:3.12-slim
+# syntax=docker/dockerfile:1
+FROM python:3.12-slim AS builder
 
-# The installer requires curl for healthcheck
-RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && rm -rf /var/lib/apt/lists/*
+# Instalar uv desde la imagen oficial
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
+
+# Configuracion de uv para build reproducible en contenedor
+ENV UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_PYTHON_DOWNLOADS=0
 
 WORKDIR /app
 
-# Instalar uv
-RUN pip install uv
+# 1. Copiar manifiestos de dependencias primero para aprovechar cache de Docker
+COPY pyproject.toml uv.lock README.md ./
 
-# Create a non-root user
-RUN adduser --disabled-password --gecos "" appuser && chown -R appuser /app
+# 2. Instalar solo las dependencias externas (sin el proyecto)
+RUN uv sync --frozen --no-dev --no-install-project
 
-# Copiar dependencias y lockfile
-COPY pyproject.toml uv.lock ./
+# 3. Copiar el codigo fuente e instalar el proyecto
+COPY src/ src/
+COPY dev/ dev/
+RUN uv sync --frozen --no-dev --no-editable
 
-# Copiar el codigo fuente
-COPY . .
+# Etapa final de ejecucion
+FROM python:3.12-slim AS runner
 
-# Instalar dependencias
-RUN uv sync --no-dev
+# Crear usuario sin privilegios
+RUN useradd --create-home --uid 10001 appuser
 
-# Ensure appuser owns everything including .venv
-RUN chown -R appuser:appuser /app
+WORKDIR /app
 
-# Change to non-root user
+# Copiar el virtualenv y fuentes con ownership de appuser
+COPY --from=builder --chown=appuser:appuser /app/.venv /app/.venv
+COPY --from=builder --chown=appuser:appuser /app/src /app/src
+COPY --from=builder --chown=appuser:appuser /app/dev /app/dev
+
+ENV PATH="/app/.venv/bin:$PATH" \
+    PYTHONPATH="/app/src:/app" \
+    PYTHONUNBUFFERED=1
+
 USER appuser
 
-# Healthcheck against /health endpoint
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:8000/health || exit 1
-
-# Exponer el puerto
 EXPOSE 8000
 
-# Comando para iniciar la aplicacion
-CMD ["uv", "run", "--no-sync", "uvicorn", "src.pdf_persistence.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Healthcheck nativo con Python (no requiere curl en imagen final)
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD ["python", "-c", "import urllib.request, sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health', timeout=4).status == 200 else 1)"]
+
+# Iniciar la aplicacion directamente con uvicorn del virtualenv
+CMD ["uvicorn", "pdf_persistence.main:app", "--host", "0.0.0.0", "--port", "8000"]
