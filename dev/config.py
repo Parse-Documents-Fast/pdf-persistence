@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     HTTP_ADDR: str = "0.0.0.0:8000"
-    MONGO_URI: str = "mongodb://localhost:27017"
+    MONGO_URL: str
     MONGO_DB_NAME: str = "pdf_persistence"
     REDIS_HOST: str = "redis-cache"
     REDIS_PORT: int = 6379

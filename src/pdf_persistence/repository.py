@@ -1,6 +1,8 @@
+import logging
 from datetime import UTC, datetime
 
 import pymongo.errors
+import redis.exceptions
 from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
@@ -16,6 +18,15 @@ from pdf_persistence.rfc9457 import (
     DuplicateDocumentException,
 )
 
+logger = logging.getLogger(__name__)
+
+REDIS_CACHE_ERRORS = (
+    redis.exceptions.RedisError,
+    ConnectionError,
+    TimeoutError,
+    OSError,
+)
+
 
 async def create_document(
     db: AsyncIOMotorDatabase, doc: PersistCreateRequest
@@ -29,12 +40,15 @@ async def create_document(
         result = await collection.insert_one(doc_dict)
         doc_dict["_id"] = result.inserted_id
 
-        # Guardar en redis
-        redis_client = get_redis()
-        cache_key = f"dedupe:checksum:{doc.checksum}"
-        await redis_client.set(
-            cache_key, str(result.inserted_id), ex=settings.REDIS_TTL
-        )
+        # Guardar en redis de forma best-effort
+        try:
+            redis_client = get_redis()
+            cache_key = f"dedupe:checksum:{doc.checksum}"
+            await redis_client.set(
+                cache_key, str(result.inserted_id), ex=settings.REDIS_TTL
+            )
+        except REDIS_CACHE_ERRORS as err:
+            logger.warning("Failed to cache checksum in Redis: %s", err)
 
         return PersistRecord.model_validate(doc_dict)
     except pymongo.errors.DuplicateKeyError as e:
@@ -80,15 +94,18 @@ async def update_document(
 async def get_document_by_checksum(
     db: AsyncIOMotorDatabase, checksum: str
 ) -> PersistRecord | None:
-    redis_client = get_redis()
     cache_key = f"dedupe:checksum:{checksum}"
 
-    cached_id = await redis_client.get(cache_key)
-    if cached_id:
-        try:
-            return await get_document_by_id(db, cached_id)
-        except DocumentNotFoundException:
-            pass
+    try:
+        redis_client = get_redis()
+        cached_id = await redis_client.get(cache_key)
+        if cached_id:
+            try:
+                return await get_document_by_id(db, cached_id)
+            except DocumentNotFoundException:
+                pass
+    except REDIS_CACHE_ERRORS as err:
+        logger.warning("Cache lookup failed for checksum %s: %s", checksum, err)
 
     collection = db["documents"]
     doc_dict = await collection.find_one({"checksum": checksum})
@@ -97,7 +114,11 @@ async def get_document_by_checksum(
         return None
 
     doc_resp = PersistRecord.model_validate(doc_dict)
-    await redis_client.set(cache_key, str(doc_resp.id), ex=settings.REDIS_TTL)
+    try:
+        redis_client = get_redis()
+        await redis_client.set(cache_key, str(doc_resp.id), ex=settings.REDIS_TTL)
+    except REDIS_CACHE_ERRORS as err:
+        logger.warning("Failed to update cache for checksum %s: %s", checksum, err)
 
     return doc_resp
 
@@ -118,9 +139,12 @@ async def delete_document(db: AsyncIOMotorDatabase, document_id: str) -> bool:
     collection = db["documents"]
     doc = await collection.find_one({"_id": ObjectId(document_id)})
     if doc and "checksum" in doc:
-        redis_client = get_redis()
-        cache_key = f"dedupe:checksum:{doc['checksum']}"
-        await redis_client.delete(cache_key)
+        try:
+            redis_client = get_redis()
+            cache_key = f"dedupe:checksum:{doc['checksum']}"
+            await redis_client.delete(cache_key)
+        except REDIS_CACHE_ERRORS as err:
+            logger.warning("Failed to evict cache key on delete: %s", err)
 
     result = await collection.delete_one({"_id": ObjectId(document_id)})
     return result.deleted_count > 0
