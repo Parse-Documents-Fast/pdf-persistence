@@ -30,6 +30,19 @@ Siguiendo el **ADR-0006** (`pdf-infra gestiona la instancia de MongoDB; pdf-pers
 | `REDIS_HOST` | Host de la instancia Redis para caché de checksums | `redis-cache` |
 | `REDIS_PORT` | Puerto de la instancia Redis | `6379` |
 | `REDIS_TTL` | Tiempo de vida de claves de checksum en Redis (segundos) | `604800` (7 días) |
+| `PDF_PERSISTANCE_REPLICAS` | Número de réplicas a instanciar en `docker-compose.yml` | `1` |
+
+## Despliegue con Docker y Escalado Horizontal
+
+El archivo `docker-compose.yml` gestiona el ciclo de vida del servicio conectado a la red compartida `fast_pdf_network` sin exponer puertos al host para permitir escalado horizontal transparente:
+
+```bash
+# Levantar una única réplica por defecto (sin límites artificiales de recursos)
+docker compose up -d
+
+# Escalar a 5 réplicas conectadas a la misma instancia de MongoDB
+PDF_PERSISTANCE_REPLICAS=5 docker compose up -d
+```
 
 ## Configuración y Ejecución
 
