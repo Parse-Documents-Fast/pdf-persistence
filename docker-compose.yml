@@ -3,8 +3,8 @@ services:
     build:
       context: .
     environment:
-      - MONGO_URI=mongodb://mongo:27017
-      - MONGO_DB_NAME=pdf_persistence
+      - MONGO_URL=${MONGO_URL:-mongodb://mongo:27017}
+      - MONGO_DB_NAME=${MONGO_DB_NAME:-pdf_persistence}
     networks:
       - fast_pdf_network
     restart: unless-stopped

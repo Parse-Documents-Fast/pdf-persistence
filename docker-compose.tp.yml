@@ -7,8 +7,8 @@ services:
     expose:
       - "8000"
     environment:
-      - MONGO_URI=mongodb://mongo:27017
-      - DB_NAME=pdf_persistence
+      - MONGO_URL=mongodb://mongo:27017
+      - MONGO_DB_NAME=pdf_persistence
       - ENV=production
       - UVICORN_WORKERS=1
     networks:
