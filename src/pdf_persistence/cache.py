@@ -24,7 +24,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         "Connecting to Redis at %s:%d", settings.REDIS_HOST, settings.REDIS_PORT
     )
     cache_manager.client = redis.Redis(
-        host=settings.REDIS_HOST, port=settings.REDIS_PORT, decode_responses=True
+        host=settings.REDIS_HOST,
+        port=settings.REDIS_PORT,
+        socket_connect_timeout=settings.REDIS_CONNECT_TIMEOUT,
+        socket_timeout=settings.REDIS_SOCKET_TIMEOUT,
+        decode_responses=True,
     )
 
     yield

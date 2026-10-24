@@ -113,3 +113,23 @@ async def test_delete_document_best_effort_redis(mock_get_redis):
 
     deleted = await delete_document(mock_db, "507f1f77bcf86cd799439011")
     assert deleted is True
+
+
+@pytest.mark.asyncio
+async def test_redis_cache_client_timeouts():
+    from fastapi import FastAPI
+
+    from pdf_persistence.cache import lifespan
+
+    app = FastAPI()
+    with patch("redis.asyncio.Redis") as mock_redis_cls:
+        mock_instance = AsyncMock()
+        mock_redis_cls.return_value = mock_instance
+        async with lifespan(app):
+            mock_redis_cls.assert_called_once_with(
+                host="redis-cache",
+                port=6379,
+                socket_connect_timeout=1.0,
+                socket_timeout=1.0,
+                decode_responses=True,
+            )
