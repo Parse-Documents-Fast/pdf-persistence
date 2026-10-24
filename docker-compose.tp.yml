@@ -12,7 +12,10 @@ services:
       - ENV=production
       - UVICORN_WORKERS=1
     networks:
-      - fast_pdf_network
+      fast_pdf_network:
+        aliases:
+          - pdf-persistence
+          - pdf-persistance
     deploy:
       replicas: 5
       resources:
