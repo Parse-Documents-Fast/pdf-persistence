@@ -133,3 +133,24 @@ async def test_redis_cache_client_timeouts():
                 socket_timeout=1.0,
                 decode_responses=True,
             )
+
+
+@pytest.mark.asyncio
+async def test_setup_indexes_unauthorized_error(caplog):
+    import logging
+
+    from pdf_persistence.db import db_manager, setup_indexes
+
+    mock_db = AsyncMock()
+    mock_collection = AsyncMock()
+    mock_db.__getitem__.return_value = mock_collection
+    mock_collection.create_index.side_effect = pymongo.errors.OperationFailure(
+        "requires authentication", code=13
+    )
+
+    db_manager.db = mock_db
+    with caplog.at_level(logging.ERROR), pytest.raises(pymongo.errors.OperationFailure):
+        await setup_indexes()
+
+    assert "Fallo de autenticacion al crear indices en MongoDB" in caplog.text
+    assert "authSource" in caplog.text

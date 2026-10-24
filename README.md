@@ -24,12 +24,14 @@ Siguiendo el **ADR-0006** (`pdf-infra gestiona la instancia de MongoDB; pdf-pers
 
 | Variable | Descripción | Default / Requerido |
 |---|---|---|
-| `MONGO_URL` | URL de conexión a MongoDB (incluye credenciales si aplica) | **Obligatoria** (sin default en código) |
+| `MONGO_URL` | URL de conexión a MongoDB. En entornos con auth, incluir `?authSource=admin` (ej: `mongodb://root:pass@mongo:27017/pdf_persistence?authSource=admin`) | **Obligatoria** (sin default en código) |
 | `MONGO_DB_NAME` | Nombre de la base de datos en MongoDB | `pdf_persistence` |
 | `HTTP_ADDR` | Dirección de escucha del servidor HTTP | `0.0.0.0:8000` |
 | `REDIS_HOST` | Host de la instancia Redis para caché de checksums | `redis-cache` |
 | `REDIS_PORT` | Puerto de la instancia Redis | `6379` |
 | `REDIS_TTL` | Tiempo de vida de claves de checksum en Redis (segundos) | `604800` (7 días) |
+| `REDIS_CONNECT_TIMEOUT` | Timeout de conexión con Redis en segundos (fallback a Mongo) | `1.0` |
+| `REDIS_SOCKET_TIMEOUT` | Timeout de operaciones de socket con Redis en segundos | `1.0` |
 | `LOG_LEVEL` | Nivel mínimo de logging (`debug`, `info`, `warn`, `error`) | `info` |
 | `PDF_PERSISTANCE_REPLICAS` | Número de réplicas a instanciar en `docker-compose.yml` | `1` |
 

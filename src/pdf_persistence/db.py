@@ -22,13 +22,21 @@ db_manager = DatabaseManager()
 async def setup_indexes() -> None:
     if db_manager.db is not None:
         collection = db_manager.db["documents"]
-        # Create a unique index on checksum to prevent duplicates
-        await collection.create_index(
-            [("checksum", pymongo.ASCENDING)],
-            unique=True,
-            name="idx_unique_checksum",
-        )
-        logger.info("MongoDB indexes verified/created")
+        try:
+            # Create a unique index on checksum to prevent duplicates
+            await collection.create_index(
+                [("checksum", pymongo.ASCENDING)],
+                unique=True,
+                name="idx_unique_checksum",
+            )
+            logger.info("MongoDB indexes verified/created")
+        except pymongo.errors.OperationFailure as err:
+            if err.code == 13:
+                logger.error(
+                    "Fallo de autenticacion al crear indices en MongoDB. "
+                    "Verifique las credenciales y el parametro authSource (ej: ?authSource=admin) en MONGO_URL."
+                )
+            raise
 
 
 @asynccontextmanager
