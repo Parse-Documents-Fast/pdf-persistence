@@ -9,7 +9,10 @@ services:
     deploy:
       replicas: ${PDF_PERSISTANCE_REPLICAS:-1}
     networks:
-      - fast_pdf_network
+      fast_pdf_network:
+        aliases:
+          - pdf-persistence
+          - pdf-persistance
     restart: unless-stopped
 
 networks:

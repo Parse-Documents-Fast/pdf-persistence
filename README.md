@@ -52,6 +52,9 @@ docker compose up -d
 PDF_PERSISTANCE_REPLICAS=5 docker compose up -d
 ```
 
+> **Compatibilidad DNS Interna:** El servicio registra los alias de red `pdf-persistence` y `pdf-persistance` en `fast_pdf_network`. Esto garantiza compatibilidad bidireccional inmediata tanto con llamadas a `http://pdf-persistence:8000` como con el cliente histórico de `pdf-main` que apunta a `http://pdf-persistance:8000`.
+
+
 ## Configuración y Ejecución
 
 El proyecto utiliza `uv` como gestor de paquetes de Python en espacio de usuario.
