@@ -177,3 +177,102 @@ async def test_db_lifespan_uses_tz_aware():
     ):
         async with lifespan(app):
             mock_motor_cls.assert_called_once_with(settings.MONGO_URL, tz_aware=True)
+
+
+@pytest.mark.asyncio
+@patch("pdf_persistence.repository.get_redis")
+async def test_create_and_read_19mb_markdown_content(mock_get_redis):
+    import bson
+
+    from pdf_persistence.models import PersistUpdateRequest
+    from pdf_persistence.repository import get_document_by_id, update_document
+
+    mock_redis = AsyncMock()
+    mock_get_redis.return_value = mock_redis
+
+    stored_doc = {}
+
+    async def fake_insert_one(doc_dict):
+        # Verify the BSON encoded document is well below MongoDB's 16 MiB limit
+        raw_bson = bson.encode(doc_dict)
+        assert len(raw_bson) < 16 * 1024 * 1024
+        stored_doc.update(doc_dict)
+        stored_doc["_id"] = bson.ObjectId("665f1a2b3c4d5e6f7a8b9c0d")
+        return AsyncMock(inserted_id=stored_doc["_id"])
+
+    async def fake_find_one(_query):
+        return dict(stored_doc)
+
+    async def fake_find_one_and_update(_query, update_op, **_kwargs):
+        stored_doc.update(update_op["$set"])
+        raw_bson = bson.encode(stored_doc)
+        assert len(raw_bson) < 16 * 1024 * 1024
+        return dict(stored_doc)
+
+    mock_db = AsyncMock()
+    mock_collection = AsyncMock()
+    mock_db.__getitem__.return_value = mock_collection
+    mock_collection.insert_one.side_effect = fake_insert_one
+    mock_collection.find_one.side_effect = fake_find_one
+    mock_collection.find_one_and_update.side_effect = fake_find_one_and_update
+
+    content_19mb = "# Titulo\n" + ("Texto de prueba en Markdown.\n" * 700_000)
+    assert len(content_19mb.encode("utf-8")) > 19 * 1024 * 1024
+
+    req = PersistCreateRequest(
+        title="Large 19MB MD",
+        checksum="hash19mb",
+        status="done",
+        original_format="markdown",
+        content=content_19mb,
+    )
+
+    created = await create_document(mock_db, req)
+    assert created.content == content_19mb
+    assert stored_doc["content"] is None
+    assert "content_compressed" in stored_doc
+
+    fetched = await get_document_by_id(mock_db, "665f1a2b3c4d5e6f7a8b9c0d")
+    assert fetched.content == content_19mb
+
+    updated = await update_document(
+        mock_db,
+        "665f1a2b3c4d5e6f7a8b9c0d",
+        PersistUpdateRequest(status="done", content=content_19mb),
+    )
+    assert updated.content == content_19mb
+
+
+@pytest.mark.asyncio
+async def test_document_too_large_exception_handling():
+    from pdf_persistence.models import PersistUpdateRequest
+    from pdf_persistence.repository import update_document
+    from pdf_persistence.rfc9457 import DocumentTooLargeException
+
+    mock_db = AsyncMock()
+    mock_collection = AsyncMock()
+    mock_db.__getitem__.return_value = mock_collection
+    mock_collection.insert_one.side_effect = pymongo.errors.DocumentTooLarge(
+        "BSON document too large"
+    )
+    mock_collection.find_one_and_update.side_effect = pymongo.errors.DocumentTooLarge(
+        "BSON document too large"
+    )
+
+    req = PersistCreateRequest(
+        title="TooLarge",
+        checksum="hash_huge",
+        status="done",
+        original_format="markdown",
+    )
+    with pytest.raises(DocumentTooLargeException) as exc_create:
+        await create_document(mock_db, req)
+    assert exc_create.value.status_code == 413
+
+    with pytest.raises(DocumentTooLargeException) as exc_update:
+        await update_document(
+            mock_db,
+            "665f1a2b3c4d5e6f7a8b9c0d",
+            PersistUpdateRequest(status="done", content="x"),
+        )
+    assert exc_update.value.status_code == 413
