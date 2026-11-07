@@ -154,3 +154,26 @@ async def test_setup_indexes_unauthorized_error(caplog):
 
     assert "Fallo de autenticacion al crear indices en MongoDB" in caplog.text
     assert "authSource" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_db_lifespan_uses_tz_aware():
+    from contextlib import asynccontextmanager
+
+    from fastapi import FastAPI
+
+    from dev.config import settings
+    from pdf_persistence.db import lifespan
+
+    @asynccontextmanager
+    async def dummy_cache_lifespan(_app):
+        yield
+
+    app = FastAPI()
+    with (
+        patch("pdf_persistence.db.AsyncIOMotorClient") as mock_motor_cls,
+        patch("pdf_persistence.db.setup_indexes", new_callable=AsyncMock),
+        patch("pdf_persistence.cache.lifespan", dummy_cache_lifespan),
+    ):
+        async with lifespan(app):
+            mock_motor_cls.assert_called_once_with(settings.MONGO_URL, tz_aware=True)
