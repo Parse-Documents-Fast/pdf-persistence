@@ -98,3 +98,13 @@ class DuplicateDocumentException(DomainException):
             detail=f"Document with checksum '{checksum}' already exists.",
             instance=instance,
         )
+
+
+class DocumentTooLargeException(DomainException):
+    def __init__(self, instance: str | None = None) -> None:
+        super().__init__(
+            status_code=413,
+            title="Payload Too Large",
+            detail="Document exceeds the maximum BSON storage size in MongoDB.",
+            instance=instance,
+        )
