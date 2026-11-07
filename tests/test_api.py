@@ -121,3 +121,48 @@ async def test_delete_document_success(
 
     assert response.status_code == 204
     mock_delete.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+@patch("pdf_persistence.api.get_document")
+@patch("pdf_persistence.api.list_documents")
+@patch("pdf_persistence.api.get_document_by_checksum")
+async def test_read_endpoints_serialize_created_at_with_timezone(
+    mock_by_checksum: AsyncMock,
+    mock_list: AsyncMock,
+    mock_get: AsyncMock,
+    test_app: FastAPI,
+) -> None:
+    from datetime import datetime
+
+    naive_dt = datetime(2026, 10, 24, 0, 10, 44, 599000)  # noqa: DTZ001
+    record = PersistRecord.model_validate(
+        {
+            "_id": "665f1a2b3c4d5e6f7a8b9c0d",
+            "title": "Test",
+            "original_format": "pdf",
+            "checksum": "abc123",
+            "status": "done",
+            "content": "# Markdown",
+            "error": None,
+            "created_at": naive_dt,
+        }
+    )
+    mock_get.return_value = record
+    mock_list.return_value = [record]
+    mock_by_checksum.return_value = record
+
+    async with AsyncClient(
+        transport=ASGITransport(app=test_app), base_url="http://test"
+    ) as client:
+        resp_get = await client.get("/documents/665f1a2b3c4d5e6f7a8b9c0d")
+        resp_list = await client.get("/documents")
+        resp_chk = await client.get("/documents/by-checksum?checksum=abc123")
+
+    expected_ts = "2026-10-24T00:10:44.599000Z"
+    assert resp_get.status_code == 200
+    assert resp_get.json()["created_at"] == expected_ts
+    assert resp_list.status_code == 200
+    assert resp_list.json()[0]["created_at"] == expected_ts
+    assert resp_chk.status_code == 200
+    assert resp_chk.json()["created_at"] == expected_ts

@@ -1,7 +1,15 @@
 from datetime import UTC, datetime
 from typing import Annotated, Any
 
-from pydantic import AliasChoices, BaseModel, BeforeValidator, ConfigDict, Field
+from pydantic import (
+    AliasChoices,
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    field_serializer,
+    field_validator,
+)
 
 
 def _convert_id_to_str(value: Any) -> str:
@@ -40,6 +48,20 @@ class PersistRecord(BaseModel):
     content: str | None = None
     error: str | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    @field_validator("created_at", mode="after")
+    @classmethod
+    def _ensure_utc(cls, value: datetime) -> datetime:
+        if value.tzinfo is None:
+            return value.replace(tzinfo=UTC)
+        return value.astimezone(UTC)
+
+    @field_serializer("created_at")
+    def _serialize_created_at(self, value: datetime) -> str:
+        utc_dt = (
+            value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+        )
+        return utc_dt.isoformat().replace("+00:00", "Z")
 
     model_config = ConfigDict(
         populate_by_name=True,

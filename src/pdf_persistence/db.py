@@ -45,7 +45,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     from pdf_persistence.cache import lifespan as cache_lifespan
 
     logger.info("Connecting to MongoDB database %s", settings.MONGO_DB_NAME)
-    db_manager.client = AsyncIOMotorClient(settings.MONGO_URL)
+    db_manager.client = AsyncIOMotorClient(settings.MONGO_URL, tz_aware=True)
     db_manager.db = db_manager.client[settings.MONGO_DB_NAME]
 
     await setup_indexes()
