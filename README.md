@@ -33,7 +33,7 @@ Siguiendo el **ADR-0006** (`pdf-infra gestiona la instancia de MongoDB; pdf-pers
 | `REDIS_CONNECT_TIMEOUT` | Timeout de conexión con Redis en segundos (fallback a Mongo) | `1.0` |
 | `REDIS_SOCKET_TIMEOUT` | Timeout de operaciones de socket con Redis en segundos | `1.0` |
 | `LOG_LEVEL` | Nivel mínimo de logging (`debug`, `info`, `warn`, `error`) | `info` |
-| `PDF_PERSISTANCE_REPLICAS` | Número de réplicas a instanciar en `docker-compose.yml` | `1` |
+| `PDF_PERSISTENCE_REPLICAS` | Número de réplicas a instanciar en `docker-compose.yml` | `1` |
 
 ## Estándar de Logs (ADR-0007)
 
@@ -51,7 +51,7 @@ El archivo `docker-compose.yml` gestiona el ciclo de vida del servicio conectado
 docker compose up -d
 
 # Escalar a 5 réplicas conectadas a la misma instancia de MongoDB
-PDF_PERSISTANCE_REPLICAS=5 docker compose up -d
+PDF_PERSISTENCE_REPLICAS=5 docker compose up -d
 ```
 
 > **Compatibilidad DNS Interna:** El servicio registra los alias de red `pdf-persistence` y `pdf-persistance` en `fast_pdf_network`. Esto garantiza compatibilidad bidireccional inmediata tanto con llamadas a `http://pdf-persistence:8000` como con el cliente histórico de `pdf-main` que apunta a `http://pdf-persistance:8000`.

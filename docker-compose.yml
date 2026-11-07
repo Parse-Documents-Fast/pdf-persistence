@@ -7,7 +7,7 @@ services:
       - MONGO_DB_NAME=${MONGO_DB_NAME:-pdf_persistence}
       - LOG_LEVEL=${LOG_LEVEL:-info}
     deploy:
-      replicas: ${PDF_PERSISTANCE_REPLICAS:-1}
+      replicas: ${PDF_PERSISTENCE_REPLICAS:-1}
     networks:
       fast_pdf_network:
         aliases:
